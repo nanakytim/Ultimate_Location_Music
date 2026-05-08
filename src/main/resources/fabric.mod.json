@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "id": "ultimate_location_music",
+  "version": "${version}",
+  "name": "Ultimate Location Music",
+  "description": "Plays music at given locations",
+  "authors": [
+    "Nanaky"
+  ],
+  "contact": {
+    "homepage": "https://github.com/nanakytim",
+    "sources": "https://github.com/nanakytim/ultimate_location_music"
+  },
+  "license": "GPL-3.0",
+  "icon": "icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "main": ["net.nanaky.ultimate_location_music.UltimateLocationMusicMod"],
+    "client": ["net.nanaky.ultimate_location_music.UltimateLocationMusicClient"],
+    "modmenu": ["net.nanaky.ultimate_location_music.ModMenuIntegration"]
+  },
+  "mixins": [],
+  "depends": {
+    "fabricloader": ">=0.18.4",
+    "minecraft": "~26.1",
+    "java": ">=25",
+    "fabric-api": "*"
+  },
+  "suggests": {
+    "modmenu": "*",
+    "cloth-config": "*"
+  }
+}
