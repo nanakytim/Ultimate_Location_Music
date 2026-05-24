@@ -18,7 +18,7 @@ public class LocationMusicPlayer {
 
     private static int     fluidPitchDelayTick = 0;
     private static boolean wasInFluid          = false;
-    private static final int FLUID_PITCH_DELAY = 50;
+    private static final int FLUID_PITCH_DELAY = 25;
 
     public static void tick() {
         Minecraft   mc     = Minecraft.getInstance();
@@ -32,7 +32,6 @@ public class LocationMusicPlayer {
 
         syncInstanceList(cfg);
 
-        // ── Fluid pitch tracking ──────────────────────────────────────────────
         boolean inFluid = player.isUnderWater() || player.isEyeInFluid(FluidTags.LAVA);
         if (inFluid != wasInFluid) {
             fluidPitchDelayTick = 0;
@@ -48,7 +47,6 @@ public class LocationMusicPlayer {
             if (inst != null && !inst.isStopped()) inst.setTargetPitch(targetPitch);
         }
 
-        // ── Location detection ────────────────────────────────────────────────
         Vec3   pos       = player.position();
         String playerDim = player.level().dimension().identifier().toString();
         boolean useFade  = cfg.useFade;
@@ -66,7 +64,6 @@ public class LocationMusicPlayer {
             }
         }
 
-        // overrideMusic=false: do not start location music if any music is already playing
         if (newPriority >= 0 && !cfg.overrideMusic && isAnyMusicPlaying(mc)) {
             newPriority = -1;
         }
@@ -81,9 +78,20 @@ public class LocationMusicPlayer {
 
             if (i == newPriority) {
                 mc.getMusicManager().stopPlaying();
+                if (inst != null && !cfg.locations.get(i).loop && activePriority != i) {
+                    LocationSoundInstance.Phase phase = inst.getPhase();
+                    if (phase == LocationSoundInstance.Phase.GHOST
+                     || phase == LocationSoundInstance.Phase.FADE_OUT) {
+                        inst.beginFadeOut(false);
+                        instances.set(i, null);
+                        inst = null;
+                    }
+                }
 
                 if (inst != null && inst.isRevivable()) {
                     inst.revive(useFade);
+                } else if (inst != null && !inst.isLooping() && !mc.getSoundManager().isActive(inst)) {
+                    inst.beginFadeOut(false);
                 } else if (inst == null) {
                     SoundEvent event = ModSounds.forIndex(cfg.locations.get(i).songIndex);
                     if (event != null) {
@@ -154,7 +162,8 @@ public class LocationMusicPlayer {
                     (java.util.Map<net.minecraft.client.resources.sounds.SoundInstance, ?>) instancesField.get(engine);
             for (net.minecraft.client.resources.sounds.SoundInstance s : map.keySet()) {
                 if (s.getSource() == SoundSource.MUSIC || s.getSource() == SoundSource.RECORDS) {
-                    if (!(s instanceof LocationSoundInstance) && s.getVolume() > 0.01f) return true;
+                    if (!(s instanceof LocationSoundInstance) && s.getVolume() > 0.01f
+                            && !s.getIdentifier().getPath().startsWith("block.note_block.")) return true;
                 }
             }
         } catch (Exception ignored) {}

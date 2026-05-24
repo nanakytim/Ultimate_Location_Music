@@ -48,6 +48,7 @@ public class LocationSoundInstance extends AbstractSoundInstance implements Tick
 
     @Override
     public void tick() {
+
         float phaseVolume;
         switch (phase) {
             case FADE_IN -> {
@@ -71,7 +72,7 @@ public class LocationSoundInstance extends AbstractSoundInstance implements Tick
                 phaseVolume = 0f;
                 if (--ghostTick <= 0) phase = Phase.DEAD;
             }
-            default -> phaseVolume = 1f; // SUSTAIN
+            default -> phaseVolume = 1f;
         }
 
         volume = targetVolume * phaseVolume;
@@ -104,7 +105,6 @@ public class LocationSoundInstance extends AbstractSoundInstance implements Tick
 
     public void revive(boolean useFadeIn) {
         if (phase == Phase.DEAD) return;
-        looping = true;
         if (useFadeIn && reviveFadeInTicks > 0) {
             fadeTick = 0;
             phase    = Phase.FADE_IN;
@@ -114,7 +114,7 @@ public class LocationSoundInstance extends AbstractSoundInstance implements Tick
         }
     }
 
-    public boolean isRevivable() { return phase == Phase.GHOST || phase == Phase.FADE_OUT; }
+    public boolean isRevivable() { return (phase == Phase.GHOST || phase == Phase.FADE_OUT) && looping; }
     public Phase   getPhase()    { return phase; }
 
     @Override public boolean isStopped()      { return phase == Phase.DEAD; }
