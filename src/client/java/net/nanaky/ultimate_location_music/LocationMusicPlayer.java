@@ -163,7 +163,7 @@ public class LocationMusicPlayer {
             for (net.minecraft.client.resources.sounds.SoundInstance s : map.keySet()) {
                 if (s.getSource() == SoundSource.MUSIC || s.getSource() == SoundSource.RECORDS) {
                     if (!(s instanceof LocationSoundInstance) && s.getVolume() > 0.01f
-                            && !s.getIdentifier().getPath().startsWith("block.note_block.")) return true;
+                            && s.getIdentifier().getPath().startsWith("music_disc.")) return true;
                 }
             }
         } catch (Exception ignored) {}
