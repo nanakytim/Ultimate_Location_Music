@@ -121,7 +121,7 @@ public class ModConfigScreen {
                         if (v) {
                             cfg.addLocation();
                             ModConfig.save();
-                            Minecraft.getInstance().setScreen(build(parent));
+                            Minecraft.getInstance().gui.setScreen(build(parent));
                         }
                     })
                     .build());
@@ -262,7 +262,7 @@ public class ModConfigScreen {
                         if (v) {
                             cfg.removeLocation(idx);
                             ModConfig.save();
-                            Minecraft.getInstance().setScreen(build(parent));
+                            Minecraft.getInstance().gui.setScreen(build(parent));
                         }
                     })
                     .build());

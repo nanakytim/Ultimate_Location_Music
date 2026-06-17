@@ -18,7 +18,7 @@ public class LocationMusicPlayer {
 
     private static int     fluidPitchDelayTick = 0;
     private static boolean wasInFluid          = false;
-    private static final int FLUID_PITCH_DELAY = 25;
+    private static final int FLUID_PITCH_DELAY = 5;
 
     public static void tick() {
         Minecraft   mc     = Minecraft.getInstance();
@@ -44,7 +44,10 @@ public class LocationMusicPlayer {
                 : (wasInFluid ? cfg.underwaterPitch : 1.0f);
 
         for (LocationSoundInstance inst : instances) {
-            if (inst != null && !inst.isStopped()) inst.setTargetPitch(targetPitch);
+            if (inst != null && !inst.isStopped()) {
+                inst.setTargetPitch(targetPitch);
+                if (inst.isFinishedNaturally()) inst.tick();
+            }
         }
 
         Vec3   pos       = player.position();
@@ -76,30 +79,38 @@ public class LocationMusicPlayer {
                 inst = null;
             }
 
+            LocationEntry entry = cfg.locations.get(i);
+
             if (i == newPriority) {
                 mc.getMusicManager().stopPlaying();
-                if (inst != null && !cfg.locations.get(i).loop && activePriority != i) {
-                    LocationSoundInstance.Phase phase = inst.getPhase();
-                    if (phase == LocationSoundInstance.Phase.GHOST
-                     || phase == LocationSoundInstance.Phase.FADE_OUT) {
-                        inst.beginFadeOut(false);
-                        instances.set(i, null);
-                        inst = null;
+
+                if (inst != null) {
+                    if (inst.isRevivable()) {
+                        inst.revive(useFade, cfg.reviveFadeInTicks);
+
+                    } else if (inst.isFinishedNaturally()) {
+
+                    } else if (!mc.getSoundManager().isActive(inst)) {
+                        LocationSoundInstance.Phase phase = inst.getPhase();
+                        if (phase == LocationSoundInstance.Phase.SUSTAIN
+                         || phase == LocationSoundInstance.Phase.FADE_IN) {
+                            if (entry.loop) {
+                                instances.set(i, null);
+                                inst = null;
+                            } else {
+                                inst.markFinishedNaturally();
+                                inst.beginFadeOut(false);
+                            }
+                        }
                     }
                 }
 
-                if (inst != null && inst.isRevivable()) {
-                    inst.revive(useFade);
-                } else if (inst != null && !inst.isLooping() && !mc.getSoundManager().isActive(inst)) {
-                    inst.beginFadeOut(false);
-                } else if (inst == null) {
-                    SoundEvent event = ModSounds.forIndex(cfg.locations.get(i).songIndex);
+                if (instances.get(i) == null) {
+                    SoundEvent event = ModSounds.forIndex(entry.songIndex);
                     if (event != null) {
-                        LocationEntry e = cfg.locations.get(i);
                         LocationSoundInstance fresh = new LocationSoundInstance(
-                                event, e.loop, e.volume,
-                                useFade ? cfg.reviveFadeInTicks : 0,
-                                useFade ? cfg.fadeOutTicks      : 0,
+                                event, entry.volume,
+                                useFade ? cfg.fadeOutTicks : 0,
                                 cfg.ghostDurationTicks
                         );
                         fresh.setTargetPitch(targetPitch);
@@ -113,7 +124,7 @@ public class LocationMusicPlayer {
                     LocationSoundInstance.Phase phase = inst.getPhase();
                     if (phase == LocationSoundInstance.Phase.FADE_IN
                      || phase == LocationSoundInstance.Phase.SUSTAIN) {
-                        inst.beginFadeOut(useFade);
+                        inst.beginExitFadeOut(useFade);
                     }
                 }
             }
@@ -132,7 +143,7 @@ public class LocationMusicPlayer {
 
     public static void stopAll(SoundManager ignored) {
         for (LocationSoundInstance inst : instances) {
-            if (inst != null && !inst.isStopped()) inst.beginFadeOut(false);
+            if (inst != null && !inst.isStopped()) inst.killImmediately();
         }
         instances.clear();
         activePriority = -1;
