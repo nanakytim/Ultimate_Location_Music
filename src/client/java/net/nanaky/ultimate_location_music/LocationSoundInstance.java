@@ -15,35 +15,31 @@ public class LocationSoundInstance extends AbstractSoundInstance implements Tick
     private int   ghostTick;
 
     private final float targetVolume;
-    private final int   reviveFadeInTicks;
+    private       int   reviveFadeInTicks;
     private final int   fadeOutTicks;
     private final int   ghostDurationTicks;
+
+    private boolean exitGhost        = false;
+    private boolean finishedNaturally = false;
 
     private float targetPitch;
     private static final float PITCH_LERP_IN_SPEED  = 1.0f / 20f;
     private static final float PITCH_LERP_OUT_SPEED = 1.0f / 10f;
 
-    public LocationSoundInstance(SoundEvent event, boolean loop, float volume,
-                                 int reviveFadeInTicks, int fadeOutTicks, int ghostDurationTicks) {
+    public LocationSoundInstance(SoundEvent event, float volume,
+                                 int fadeOutTicks, int ghostDurationTicks) {
         super(event.location(), SoundSource.MUSIC, RandomSource.create());
         this.targetVolume       = volume;
-        this.looping            = loop;
+        this.looping            = false;
         this.relative           = true;
-        this.reviveFadeInTicks  = reviveFadeInTicks;
+        this.reviveFadeInTicks  = 0;
         this.fadeOutTicks       = fadeOutTicks;
         this.ghostDurationTicks = ghostDurationTicks;
         this.pitch              = 1.0f;
         this.targetPitch        = 1.0f;
-
-        if (reviveFadeInTicks > 0) {
-            this.volume   = 0f;
-            this.phase    = Phase.FADE_IN;
-            this.fadeTick = 0;
-        } else {
-            this.volume   = volume;
-            this.phase    = Phase.SUSTAIN;
-            this.fadeTick = 0;
-        }
+        this.volume             = volume;
+        this.phase              = Phase.SUSTAIN;
+        this.fadeTick           = 0;
     }
 
     @Override
@@ -71,7 +67,7 @@ public class LocationSoundInstance extends AbstractSoundInstance implements Tick
                 phaseVolume = 0f;
                 if (--ghostTick <= 0) phase = Phase.DEAD;
             }
-            default -> phaseVolume = 1f; // SUSTAIN
+            default -> phaseVolume = 1f;
         }
 
         volume = targetVolume * phaseVolume;
@@ -84,28 +80,42 @@ public class LocationSoundInstance extends AbstractSoundInstance implements Tick
         }
     }
 
-    public void setTargetPitch(float newPitch) {
-        targetPitch = newPitch;
-    }
+    public void setTargetPitch(float p) { targetPitch = p; }
 
     public void beginFadeOut(boolean useFade) {
+    beginFadeOut(useFade ? fadeOutTicks : 0);
+    }
+
+    private void beginFadeOut(int ticks) {
         if (phase == Phase.DEAD || phase == Phase.GHOST) return;
-        if (!useFade || fadeOutTicks <= 0) {
+        if (ticks <= 0) {
             volume    = 0f;
             phase     = Phase.GHOST;
             ghostTick = ghostDurationTicks;
             return;
         }
         fadeTick = (phase == Phase.FADE_IN)
-                ? (int)(((float) fadeTick / Math.max(1, reviveFadeInTicks)) * fadeOutTicks)
-                : fadeOutTicks;
+                ? (int)(((float) fadeTick / Math.max(1, reviveFadeInTicks)) * ticks)
+                : ticks;
         phase = Phase.FADE_OUT;
     }
 
-    public void revive(boolean useFadeIn) {
+    public void beginExitFadeOut(boolean useFade) {
+        exitGhost = true;
+        beginFadeOut(useFade);
+    }
+
+    public void beginExitFadeOut(int ticks) {
+        exitGhost = true;
+        beginFadeOut(ticks);
+    }
+
+    public void revive(boolean useFadeIn, int fadeInTicks) {
         if (phase == Phase.DEAD) return;
-        looping = true;
-        if (useFadeIn && reviveFadeInTicks > 0) {
+        exitGhost         = false;
+        finishedNaturally = false;
+        if (useFadeIn && fadeInTicks > 0) {
+            this.reviveFadeInTicks = fadeInTicks;
             fadeTick = 0;
             phase    = Phase.FADE_IN;
         } else {
@@ -114,8 +124,18 @@ public class LocationSoundInstance extends AbstractSoundInstance implements Tick
         }
     }
 
-    public boolean isRevivable() { return phase == Phase.GHOST || phase == Phase.FADE_OUT; }
-    public Phase   getPhase()    { return phase; }
+    public void markFinishedNaturally() {
+        finishedNaturally = true;
+    }
+
+    public void killImmediately() {
+        volume = 0f;
+        phase  = Phase.DEAD;
+    }
+
+    public boolean isFinishedNaturally() { return finishedNaturally; }
+    public boolean isRevivable()         { return (phase == Phase.GHOST || phase == Phase.FADE_OUT) && exitGhost; }
+    public Phase   getPhase()            { return phase; }
 
     @Override public boolean isStopped()      { return phase == Phase.DEAD; }
     @Override public boolean canStartSilent() { return true; }
