@@ -82,23 +82,32 @@ public class LocationSoundInstance extends AbstractSoundInstance implements Tick
 
     public void setTargetPitch(float p) { targetPitch = p; }
 
-    public void beginExitFadeOut(boolean useFade) {
-        exitGhost = true;
-        beginFadeOut(useFade);
+    public void beginFadeOut(boolean useFade) {
+    beginFadeOut(useFade ? fadeOutTicks : 0);
     }
 
-    public void beginFadeOut(boolean useFade) {
+    private void beginFadeOut(int ticks) {
         if (phase == Phase.DEAD || phase == Phase.GHOST) return;
-        if (!useFade || fadeOutTicks <= 0) {
+        if (ticks <= 0) {
             volume    = 0f;
             phase     = Phase.GHOST;
             ghostTick = ghostDurationTicks;
             return;
         }
         fadeTick = (phase == Phase.FADE_IN)
-                ? (int)(((float) fadeTick / Math.max(1, reviveFadeInTicks)) * fadeOutTicks)
-                : fadeOutTicks;
+                ? (int)(((float) fadeTick / Math.max(1, reviveFadeInTicks)) * ticks)
+                : ticks;
         phase = Phase.FADE_OUT;
+    }
+
+    public void beginExitFadeOut(boolean useFade) {
+        exitGhost = true;
+        beginFadeOut(useFade);
+    }
+
+    public void beginExitFadeOut(int ticks) {
+        exitGhost = true;
+        beginFadeOut(ticks);
     }
 
     public void revive(boolean useFadeIn, int fadeInTicks) {
